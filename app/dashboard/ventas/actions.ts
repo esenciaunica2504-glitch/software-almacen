@@ -26,6 +26,7 @@ export async function crearVenta(formData: FormData): Promise<VentaResult> {
   const montoRecibido = Number(formData.get('montoRecibido') ?? 0);
   const referencia = String(formData.get('referencia') ?? '').trim();
   const lector = String(formData.get('lector') ?? '').trim();
+  const clienteId = String(formData.get('clienteId') ?? '').trim();
 
   let cart: CartItem[] = [];
   try {
@@ -42,6 +43,16 @@ export async function crearVenta(formData: FormData): Promise<VentaResult> {
     return { ok: false, mensaje: 'Tu rol no puede registrar ventas.' };
   }
   const almacen = { almacenId: contexto.almacenId };
+
+  if (clienteId) {
+    const { data: cliente } = await supabaseAdmin
+      .from('clientes')
+      .select('id')
+      .eq('id', clienteId)
+      .eq('almacen_id', almacen.almacenId)
+      .maybeSingle();
+    if (!cliente) return { ok: false, mensaje: 'El cliente seleccionado no pertenece a este almacén.' };
+  }
 
   const total = cart.reduce((s, it) => s + it.precio * it.cantidad, 0);
 
@@ -102,6 +113,7 @@ export async function crearVenta(formData: FormData): Promise<VentaResult> {
     if (paymentMethod === 'efectivo') payload.vuelto = vuelto;
     if (paymentMethod === 'transferencia' && referencia) payload.referencia = referencia;
     if (paymentMethod === 'lector_universal' && lector) payload.lector = lector;
+    if (clienteId) payload.cliente_id = clienteId;
 
     const { data: venta, error: ventaError } = await supabaseAdmin
       .from('ventas')

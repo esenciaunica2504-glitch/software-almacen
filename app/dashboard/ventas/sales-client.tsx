@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { crearVenta, type VentaResult } from './actions';
 
 type Producto = { id: string; nombre: string; precio: number; stock: number };
+type Cliente = { id: string; nombre: string; telefono: string | null };
 
 type CartLine = { id: string; nombre: string; precio: number; cantidad: number };
 
@@ -18,7 +19,7 @@ const opcionesPago = [
   { value: 'lector_universal', label: 'Lector universal' },
 ] as const;
 
-export default function SalesClient({ productos }: { productos: Producto[] }) {
+export default function SalesClient({ productos, clientes }: { productos: Producto[]; clientes: Cliente[] }) {
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -27,6 +28,7 @@ export default function SalesClient({ productos }: { productos: Producto[] }) {
   const [montoRecibido, setMontoRecibido] = useState('');
   const [referencia, setReferencia] = useState('');
   const [lector, setLector] = useState('');
+  const [clienteId, setClienteId] = useState('');
   const [ultimoRecibo, setUltimoRecibo] = useState<null | { total: number; metodoPago: string; vuelto: number; fecha: string; cart: CartLine[] }>(null);
 
   const visibles = useMemo(() => productos.filter((p) => p.nombre.toLowerCase().includes(busqueda.toLowerCase())), [productos, busqueda]);
@@ -57,6 +59,7 @@ export default function SalesClient({ productos }: { productos: Producto[] }) {
     if (metodoPago === 'efectivo') body.append('montoRecibido', String(Number(montoRecibido || 0)));
     if (metodoPago === 'transferencia') body.append('referencia', referencia);
     if (metodoPago === 'lector_universal') body.append('lector', lector || 'Lector universal');
+    if (clienteId) body.append('clienteId', clienteId);
 
     try {
       const res = await crearVenta(body as any);
@@ -74,6 +77,7 @@ export default function SalesClient({ productos }: { productos: Producto[] }) {
         setMontoRecibido('');
         setReferencia('');
         setLector('');
+        setClienteId('');
         router.refresh();
       }
     } catch (err: any) {
@@ -133,6 +137,13 @@ export default function SalesClient({ productos }: { productos: Producto[] }) {
 
           <div className="mt-4 border-t pt-3">
             <div className="flex justify-between font-medium"><span>Total</span><span>${subtotal}</span></div>
+            <div className="mt-4">
+              <label className="mb-2 block text-xs font-semibold uppercase text-slate-500">Cliente (opcional)</label>
+              <select value={clienteId} onChange={(event) => setClienteId(event.target.value)} className="w-full rounded-lg border p-2 text-sm">
+                <option value="">Consumidor final</option>
+                {clientes.map((cliente) => <option key={cliente.id} value={cliente.id}>{cliente.nombre}{cliente.telefono ? ` · ${cliente.telefono}` : ''}</option>)}
+              </select>
+            </div>
 
             <div className="mt-4 space-y-3">
               <div>
